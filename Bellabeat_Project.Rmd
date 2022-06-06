@@ -1,0 +1,177 @@
+---
+title: "Bellabeat Project"
+author: "Haizhen H."
+date: "6/5/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+Bellabeat, a high-tech manufacturer of health-focused products for women, believes that analyzing smart devices fitness data could help unlock new growth opportunities for the company. They want the data analytics team to provide a high level recommendations for Bellabeat's marketing strategy based data insights.
+
+## Business Task
+
+* Analyze smart device usage data in order to gain insight into how consumers use non-Bellabeat smart devices
+* Apply those insights into one of the Bellabeat products and make a recommendation
+
+## Stakeholders
+***Urška Sršen***:  Bellabeat’s co-founder and Chief Creative Officer
+
+***Sando Mur***: Mathematician and Bellabeat’s co-founder; key member of the Bellabeat executive team
+
+## Data Soruce
+***FitBit Fitness Tracker Data***: A data set contains personal fitness tracker from thirty fitbit users.It includes information about daily activity, steps, and heart rate that can be used to explore users' habits
+
+***Source***: [Kaggle](https://www.kaggle.com/datasets/arashnic/fitbit)
+
+***License***: CC0:Public Domain
+
+***Starter Kernels***:
+* [Julen Aranguren](https://www.kaggle.com/julenaranguren/bellabeat-case-study)
+* [Anastasiia Chebotina](https://www.kaggle.com/chebotinaa/bellabeat-case-study-with-r)
+
+
+## Data Preparation
+```{r library}
+library(tidyverse)
+library(lubridate)
+```
+
+```{r data loading}
+setwd('C:/Users/kano/Desktop/Case Study - Bellabeat/Fitabase Data 4.12.16-5.12.16')
+files = list.files(pattern='*.csv', full.name=T)
+file_names = list.files(pattern='*.csv')
+
+for (i in 1:length(files)){
+  assign(file_names[i],read.csv(files[i]))
+}
+
+
+```
+
+```{r data exploration}
+df_list = list(dailyActivity_merged.csv,dailyCalories_merged.csv,
+               dailyIntensities_merged.csv,dailySteps_merged.csv,
+               heartrate_seconds_merged.csv,hourlyCalories_merged.csv,
+               hourlyIntensities_merged.csv,hourlySteps_merged.csv,
+               minuteCaloriesNarrow_merged.csv,minuteCaloriesWide_merged.csv,
+               minuteIntensitiesNarrow_merged.csv,minuteIntensitiesWide_merged.csv,
+               minuteMETsNarrow_merged.csv,minuteSleep_merged.csv,
+               minuteStepsNarrow_merged.csv,minuteStepsWide_merged.csv,
+               sleepDay_merged.csv,weightLogInfo_merged.csv)
+
+sapply(df_list,head)
+
+```
+
+We can noticed some data frames are the combination of other data frames. So I am going to only use the data frame have more information and completeness, and we will focuse on sleeping and weight information:
+
+* sleepDay_merged.csv
+* weightLogInfo_merged.csv
+
+
+## Data cleaning
+
+The data sets I have chosen are small/middle size, so I can perform data cleaning at R studio
+
+Checklist:
+* Missing Value
+* Duplicated data
+* data format
+* unwanted/irrelevant data
+
+```{r Data cleaning}
+# rename df for further convenience
+sleep <- sleepDay_merged.csv
+weight <- weightLogInfo_merged.csv
+
+####################################################################
+sleep %>%
+  is.na() %>%
+  sum()             # sum = 0 indicated no missing/NA value
+
+sleep %>%
+  duplicated() %>%
+  sum()             # sum = 3 indicated have 3 duplicated rows
+sleep <- sleep %>%
+  unique()
+nrow(sleep)         # duplicated row has been removed
+
+str(sleep)
+sleep <- sleep %>% separate(col= SleepDay, 
+                            into=c('day','time','stamp'),
+                            sep=' ') %>%
+                            select(-c(time, stamp))
+sleep$day <- as.Date(sleep$day, '%m/%d/%Y')
+
+#################################################################
+weight %>%
+  is.na() %>%
+  sum()                   # 65 missing values from Fat columns
+                          # Invalid information
+
+weight <- weight %>%
+  select(-Fat)            #remove Fat columns
+
+
+weight %>%
+  duplicated() %>%
+  sum()                   # 0 duplicated
+
+str(weight)
+
+
+weight <- weight %>% separate(col= Date, 
+                            into=c('day','time','stamp'),
+                            sep=' ') %>%
+                            select(-c(time, stamp))
+weight$day <- as.Date(weight$day, '%m/%d/%Y')
+
+####################################################################
+
+```
+
+
+## Data Analyzing
+```{r data Analyzing sleep}
+summary(sleep)
+sleep$Id = as.character(sleep$Id)
+
+sleep %>%
+  group_by(Id) %>%
+  summarize(meanOfSleepMin = mean(TotalMinutesAsleep)) %>%
+  ggplot(aes(x=reorder(Id,meanOfSleepMin ), y=meanOfSleepMin)) +
+  geom_bar(stat = 'identity') +
+  theme(axis.text.x = element_blank()) +
+  labs(x='Id',title='Mean SleepMinute ')+
+  geom_hline(yintercept = 400, linetype='dashed', color='red')
+
+```
+
+Recommended amount of sleep minutes for adults are 400 or more minutes (red dashed line). We can see there are about half of the respondents cannot meet this recommendation, and three of them have extremely lower sleep minutes that need to be cautious.
+
+```{r data analyzing weight}
+weight$Id = as.character(weight$Id)
+
+weight %>% 
+  group_by(Id) %>%
+  summarise(meanBMI = mean(BMI)) %>%
+  ggplot(aes(x=reorder(Id,meanBMI), y=meanBMI)) +
+  geom_bar(stat = 'identity') +
+  geom_hline(yintercept = 24.9, linetype='dashed', color='red') +
+  geom_hline(yintercept = 18.5, linetype='dashed', color='blue') +
+  labs(title='mean BMI', x= 'Id')
+  
+```
+
+The area between red line and blue line is considered as healthy weight. Above red line is considered as overweight, and below blue line is considered as underweight. Only three people have healthy weight, four people have little bit overweight, and one people have extremely high IBM which can be considered as obesity. 
+
+
+## Recommendation
+The data shown they are the common health problems related with sleep and weight which Bellabeat Product should focus on.
+
+Bellabeat Leaf tracker should provide more information about users' sleep and weight information to help them make healthy decision.
